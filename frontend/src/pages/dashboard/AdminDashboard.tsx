@@ -8,6 +8,7 @@ import {
   CompletionDoughnut,
   DepartmentBarChart,
 } from "../../components/ui/charts";
+import { useAdminAnalytics } from "../../features/analytics/hooks";
 
 const nav = [
   { label: "Summary", href: "#summary" },
@@ -15,48 +16,9 @@ const nav = [
   { label: "Governance", href: "#governance" },
 ];
 
-const auditLogs = [
-  {
-    action: "Goal approval policy updated",
-    user: "Admin",
-    time: "Sep 12, 2:40 PM",
-    type: "policy",
-  },
-  {
-    action: "New manager role assigned to Priya Gupta",
-    user: "Admin",
-    time: "Sep 11, 10:15 AM",
-    type: "role",
-  },
-  {
-    action: "Cycle Q3 locked for edits",
-    user: "System",
-    time: "Sep 10, 6:00 PM",
-    type: "cycle",
-  },
-  {
-    action: "Bulk user import completed (24 users)",
-    user: "Admin",
-    time: "Sep 9, 3:30 PM",
-    type: "import",
-  },
-  {
-    action: "Check-in window opened for Q3",
-    user: "System",
-    time: "Sep 1, 12:00 AM",
-    type: "cycle",
-  },
-];
-
-const departmentHealth = [
-  { label: "Sales", value: 86, color: "bg-accent" },
-  { label: "Product", value: 79, color: "bg-warning-500" },
-  { label: "Engineering", value: 91, color: "bg-success-500" },
-  { label: "People Ops", value: 90, color: "bg-success-500" },
-  { label: "Marketing", value: 72, color: "bg-warning-500" },
-];
-
 export function AdminDashboard() {
+  const { data: analytics, isLoading, isError } = useAdminAnalytics();
+
   return (
     <AppShell
       title="Admin Dashboard"
@@ -66,20 +28,26 @@ export function AdminDashboard() {
     >
       {/* Stats */}
       <section id="summary" className="grid gap-4 md:grid-cols-4">
-        <StatCard
-          label="Org adoption"
-          value="92%"
-          helper="1,284 active users"
-          trend="up"
-        />
-        <StatCard
-          label="Cycle completion"
-          value="81%"
-          helper="3 teams pending"
-          trend="up"
-        />
-        <StatCard label="Total goals" value="847" helper="142 new this week" />
-        <StatCard label="Audit events" value="418" helper="Last 7 days" />
+        {isLoading && <div className="col-span-4 text-sm text-ink-2 py-4">Loading analytics...</div>}
+        {isError && <div className="col-span-4 text-sm text-danger-500 py-4">Failed to load analytics platform data.</div>}
+        {analytics && (
+          <>
+            <StatCard
+              label="Org adoption"
+              value={`${analytics.metrics.adoptionTarget}%`}
+              helper={`${analytics.metrics.activeUsers.toLocaleString()} active users`}
+              trend="up"
+            />
+            <StatCard
+              label="Cycle completion"
+              value={`${analytics.metrics.cycleCompletion}%`}
+              helper={`${analytics.metrics.pendingTeams} teams pending`}
+              trend="up"
+            />
+            <StatCard label="Total goals" value={analytics.metrics.totalGoals.toString()} helper={`${analytics.metrics.newGoalsWeek} new this week`} />
+            <StatCard label="Audit events" value={analytics.metrics.auditEvents.toString()} helper="Last 7 days" />
+          </>
+        )}
       </section>
 
       {/* Charts row */}
@@ -105,7 +73,8 @@ export function AdminDashboard() {
             Department Health
           </div>
           <div className="space-y-4">
-            {departmentHealth.map((dept, i) => (
+            {isLoading && <div className="text-sm text-ink-2 py-4">Loading department metrics...</div>}
+            {analytics?.departmentHealth.map((dept, i) => (
               <motion.div
                 key={dept.label}
                 initial={{ opacity: 0, y: 8 }}
@@ -187,7 +156,8 @@ export function AdminDashboard() {
             Audit Trail
           </div>
           <div className="space-y-0">
-            {auditLogs.map((log, i) => (
+            {isLoading && <div className="text-sm text-ink-2 py-4 px-2">Loading audit logs...</div>}
+            {analytics?.auditLogs.map((log, i) => (
               <motion.div
                 key={log.action}
                 initial={{ opacity: 0, x: -10 }}

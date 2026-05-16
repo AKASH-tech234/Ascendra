@@ -1,15 +1,62 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Lock, Mail, User, ArrowRight, Briefcase, CheckCircle2 } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { buttonStyles } from "../../components/ui/button";
 
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { authApi } from "../../features/auth/api";
+import { useAuthStore } from "../../features/auth/store";
+import type { RegisterPayload } from "../../features/auth/api";
+
+const signUpSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  role: z.enum(["EMPLOYEE", "MANAGER", "ADMIN"]),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
 export function SignUpPage() {
+  const navigate = useNavigate();
+  const setCredentials = useAuthStore((state) => state.setCredentials);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<z.infer<typeof signUpSchema>>({
+    resolver: zodResolver(signUpSchema),
+    defaultValues: { role: "EMPLOYEE" },
+  });
+
+  const mutation = useMutation({
+    mutationFn: (data: RegisterPayload) => authApi.register(data),
+    onSuccess: (data) => {
+      setCredentials(data.user, data.token);
+      toast.success("Account created successfully!");
+      // Send to proper dashboard
+      if (data.user.role === "ADMIN") navigate("/app/admin", { replace: true });
+      else if (data.user.role === "MANAGER") navigate("/app/manager", { replace: true });
+      else navigate("/app/employee", { replace: true });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Failed to create account");
+    },
+  });
+
+  const onSubmit = (values: z.infer<typeof signUpSchema>) => {
+    mutation.mutate(values);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-surface-2 flex items-center justify-center px-4 py-12 relative overflow-hidden">
       {/* Background decorations */}
-      <div className="absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full bg-primary-100/40 blur-3xl" />
-      <div className="absolute -bottom-40 -left-40 h-[400px] w-[400px] rounded-full bg-primary-50/60 blur-3xl" />
+      <div className="absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full bg-primary-100/40 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-40 -left-40 h-[400px] w-[400px] rounded-full bg-primary-50/60 blur-3xl pointer-events-none" />
 
       <motion.div
         initial={{ opacity: 0, y: 30 }}
@@ -20,7 +67,7 @@ export function SignUpPage() {
         {/* Logo */}
         <div className="flex items-center justify-center gap-3 mb-8">
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-primary-700 text-sm font-bold text-white shadow-lg shadow-accent/20 transition-transform group-hover:scale-110">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-primary-700 text-sm font-bold text-white shadow-lg shadow-primary-500/20 transition-transform group-hover:scale-110">
               A
             </div>
             <div>
@@ -33,7 +80,7 @@ export function SignUpPage() {
         </div>
 
         {/* Card */}
-        <div className="rounded-2xl border border-line bg-white p-8 shadow-xl shadow-primary-500/5">
+        <div className="rounded-2xl border border-line bg-white p-8 shadow-xl shadow-primary-500/5 relative">
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-ink">Create your workspace</h2>
             <p className="text-sm text-ink-2 mt-1">
@@ -41,7 +88,7 @@ export function SignUpPage() {
             </p>
           </div>
 
-          <form className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <label
                 htmlFor="signup-name"
@@ -53,13 +100,18 @@ export function SignUpPage() {
                 <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-2" />
                 <input
                   id="signup-name"
-                  name="name"
                   type="text"
                   placeholder="Your name"
-                  className="w-full rounded-xl border border-line bg-white pl-10 pr-4 py-3 text-sm transition-all focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none"
+                  disabled={mutation.isPending}
+                  className={`w-full rounded-xl border bg-white pl-10 pr-4 py-3 text-sm transition-all focus:border-accent focus:ring-2 focus:ring-primary-500/30 outline-none ${
+                    errors.name ? "border-danger-500" : "border-line"
+                  }`}
+                  {...register("name")}
                 />
               </div>
+              {errors.name && <p className="text-xs text-danger-500">{errors.name.message}</p>}
             </div>
+
             <div className="space-y-2">
               <label
                 htmlFor="signup-email"
@@ -71,13 +123,18 @@ export function SignUpPage() {
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-2" />
                 <input
                   id="signup-email"
-                  name="email"
                   type="email"
                   placeholder="you@company.com"
-                  className="w-full rounded-xl border border-line bg-white pl-10 pr-4 py-3 text-sm transition-all focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none"
+                  disabled={mutation.isPending}
+                  className={`w-full rounded-xl border bg-white pl-10 pr-4 py-3 text-sm transition-all focus:border-accent focus:ring-2 focus:ring-primary-500/30 outline-none ${
+                    errors.email ? "border-danger-500" : "border-line"
+                  }`}
+                  {...register("email")}
                 />
               </div>
+              {errors.email && <p className="text-xs text-danger-500">{errors.email.message}</p>}
             </div>
+
             <div className="space-y-2">
               <label
                 htmlFor="signup-role"
@@ -89,15 +146,20 @@ export function SignUpPage() {
                 <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-2" />
                 <select
                   id="signup-role"
-                  name="role"
-                  className="w-full rounded-xl border border-line bg-white pl-10 pr-4 py-3 text-sm transition-all focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none appearance-none cursor-pointer"
+                  disabled={mutation.isPending}
+                  className={`w-full rounded-xl border bg-white pl-10 pr-4 py-3 text-sm transition-all focus:border-accent focus:ring-2 focus:ring-primary-500/30 outline-none appearance-none cursor-pointer ${
+                    errors.role ? "border-danger-500" : "border-line"
+                  }`}
+                  {...register("role")}
                 >
-                  <option>Employee</option>
-                  <option>Manager</option>
-                  <option>Admin</option>
+                  <option value="EMPLOYEE">Employee</option>
+                  <option value="MANAGER">Manager</option>
+                  <option value="ADMIN">Admin</option>
                 </select>
               </div>
+              {errors.role && <p className="text-xs text-danger-500">{errors.role.message}</p>}
             </div>
+
             <div className="space-y-2">
               <label
                 htmlFor="signup-password"
@@ -109,22 +171,36 @@ export function SignUpPage() {
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-2" />
                 <input
                   id="signup-password"
-                  name="password"
                   type="password"
                   placeholder="Create a password"
-                  className="w-full rounded-xl border border-line bg-white pl-10 pr-4 py-3 text-sm transition-all focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none"
+                  disabled={mutation.isPending}
+                  className={`w-full rounded-xl border bg-white pl-10 pr-4 py-3 text-sm transition-all focus:border-accent focus:ring-2 focus:ring-primary-500/30 outline-none ${
+                    errors.password ? "border-danger-500" : "border-line"
+                  }`}
+                  {...register("password")}
                 />
               </div>
+              {errors.password && <p className="text-xs text-danger-500">{errors.password.message}</p>}
             </div>
 
             <motion.button
               type="submit"
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
-              className={buttonStyles({ size: "lg", className: "w-full" })}
+              disabled={mutation.isPending}
+              whileHover={!mutation.isPending ? { scale: 1.01 } : {}}
+              whileTap={!mutation.isPending ? { scale: 0.98 } : {}}
+              className={buttonStyles({ size: "lg", className: "w-full disabled:opacity-70 mt-2" })}
             >
-              Create account
-              <ArrowRight className="h-4 w-4" />
+              {mutation.isPending ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  Creating account...
+                </div>
+              ) : (
+                <>
+                  Create account
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
             </motion.button>
           </form>
 

@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Badge } from "./badge";
 import type { BadgeVariant } from "./badge";
 
-export type GoalStatus = "On Track" | "At Risk" | "Off Track" | "Completed" | "Pending";
+export type GoalStatus = "On Track" | "At Risk" | "Off Track" | "Completed" | "Pending" | "Draft";
 
 export type GoalCardProps = {
   title: string;
@@ -20,6 +20,7 @@ const statusConfig: Record<GoalStatus, { variant: BadgeVariant; label: string }>
   "Off Track": { variant: "danger", label: "Off Track" },
   Completed: { variant: "success", label: "Completed" },
   Pending: { variant: "info", label: "Pending" },
+  Draft: { variant: "outline", label: "Draft" },
 };
 
 function getProgressColor(progress: number): string {

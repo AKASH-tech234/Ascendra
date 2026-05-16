@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Plus, FileText, Users } from "lucide-react";
 import { AppShell } from "../../components/layout/AppShell";
@@ -6,46 +7,14 @@ import { StatCard } from "../../components/ui/stat-card";
 import { GoalCard } from "../../components/ui/goal-card";
 import { GoalProgressChart } from "../../components/ui/charts";
 import { Badge } from "../../components/ui/badge";
-import type { GoalStatus } from "../../components/ui/goal-card";
+import { useGoals } from "../../features/goals/hooks";
+import { CreateGoalModal } from "../../features/goals/components";
+import { CheckInModal } from "../../features/checkins/components";
 
 const nav = [
   { label: "Summary", href: "#summary" },
   { label: "My goals", href: "#goals" },
   { label: "Check-ins", href: "#checkins" },
-];
-
-const goals: {
-  title: string;
-  status: GoalStatus;
-  progress: number;
-  dueDate: string;
-  weight: string;
-  thrustArea: string;
-}[] = [
-  {
-    title: "Increase pipeline conversion",
-    status: "On Track",
-    progress: 72,
-    dueDate: "Sep 30",
-    weight: "40%",
-    thrustArea: "Growth",
-  },
-  {
-    title: "Improve onboarding NPS",
-    status: "At Risk",
-    progress: 64,
-    dueDate: "Sep 18",
-    weight: "35%",
-    thrustArea: "CX",
-  },
-  {
-    title: "Reduce incident response time",
-    status: "On Track",
-    progress: 88,
-    dueDate: "Sep 26",
-    weight: "25%",
-    thrustArea: "Ops",
-  },
 ];
 
 const activities = [
@@ -72,6 +41,12 @@ const activities = [
 ];
 
 export function EmployeeDashboard() {
+  const { data: goals, isLoading, isError } = useGoals();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false);
+
+  const onTrackCount = goals?.filter(g => g.status === "APPROVED" || g.status === "SUBMITTED").length || 0;
+  
   return (
     <AppShell
       title="Employee Dashboard"
@@ -81,7 +56,7 @@ export function EmployeeDashboard() {
     >
       {/* Stats */}
       <section id="summary" className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Goals on track" value="4" helper="1 at risk" trend="up" />
+        <StatCard label="Active goals" value={goals?.length.toString() || "0"} helper={`${onTrackCount} pending/approved`} trend="up" />
         <StatCard
           label="Avg progress"
           value="78%"
@@ -99,6 +74,7 @@ export function EmployeeDashboard() {
             <p className="text-sm text-ink-2">Q3 2026 cycle</p>
           </div>
           <motion.button
+            onClick={() => setIsModalOpen(true)}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent-3 transition-colors"
@@ -108,18 +84,33 @@ export function EmployeeDashboard() {
           </motion.button>
         </div>
         <div className="grid gap-3">
-          {goals.map((goal, i) => (
+          {isLoading && (
+            <div className="py-8 text-center text-sm text-ink-2">Loading goals...</div>
+          )}
+          {isError && (
+             <div className="py-8 text-center text-sm text-danger-500">Failed to load goals</div>
+          )}
+          {goals?.map((goal, i) => (
             <GoalCard
-              key={goal.title}
+              key={goal.id}
               title={goal.title}
-              status={goal.status}
+              status={goal.status === "APPROVED" ? "On Track" : goal.status === "DRAFT" ? "Draft" : "At Risk"} 
               progress={goal.progress}
-              dueDate={goal.dueDate}
-              weight={goal.weight}
-              thrustArea={goal.thrustArea}
+              dueDate={goal.targetDate}
+              weight={`${goal.weight}%`}
+              thrustArea={goal.department}
               index={i}
             />
           ))}
+          {goals?.length === 0 && (
+             <div className="rounded-xl border border-dashed border-line p-8 flex flex-col items-center justify-center text-center">
+               <div className="h-10 w-10 bg-surface-2 rounded-full flex items-center justify-center mb-3 text-ink-2">
+                 <Plus className="h-5 w-5" />
+               </div>
+               <p className="text-sm font-medium text-ink">No goals created yet</p>
+               <p className="text-xs text-ink-2 mt-1">Start by creating your first quarterly objective.</p>
+             </div>
+          )}
         </div>
       </section>
 
@@ -137,12 +128,13 @@ export function EmployeeDashboard() {
           </div>
           <div className="space-y-3">
             {[
-              { icon: Plus, label: "Draft new goal", color: "bg-primary-50 text-accent" },
+              { icon: Plus, label: "Draft new goal", color: "bg-primary-50 text-accent", onClick: () => setIsModalOpen(true) },
               { icon: FileText, label: "Submit quarterly check-in", color: "bg-success-50 text-success-700" },
               { icon: Users, label: "Review shared goals", color: "bg-warning-50 text-warning-600" },
             ].map((action) => (
               <motion.button
                 key={action.label}
+                onClick={action.onClick}
                 whileHover={{ x: 4 }}
                 className="w-full flex items-center gap-3 rounded-xl border border-line p-3.5 text-sm font-medium text-ink hover:bg-surface-2 transition-all text-left"
               >
@@ -155,6 +147,12 @@ export function EmployeeDashboard() {
           </div>
         </Card>
       </section>
+
+      {/* Create Goal Modal */}
+      <CreateGoalModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+
+      {/* Check In Modal */}
+      <CheckInModal isOpen={isCheckInModalOpen} onClose={() => setIsCheckInModalOpen(false)} />
 
       {/* Check-ins + Activity */}
       <section id="checkins" className="grid gap-6 lg:grid-cols-2">
@@ -170,6 +168,7 @@ export function EmployeeDashboard() {
               Summarize wins, risks, and next actions before Sep 21.
             </div>
             <motion.button
+              onClick={() => setIsCheckInModalOpen(true)}
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.97 }}
               className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent-3 transition-colors"

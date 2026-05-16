@@ -5,42 +5,12 @@ import { Card } from "../../components/ui/card";
 import { StatCard } from "../../components/ui/stat-card";
 import { Badge } from "../../components/ui/badge";
 import { TeamProgressLineChart } from "../../components/ui/charts";
+import { usePendingApprovals, useRespondToApproval } from "../../features/approvals/hooks";
 
 const nav = [
   { label: "Summary", href: "#summary" },
   { label: "Approvals", href: "#approvals" },
   { label: "Team health", href: "#team" },
-];
-
-const approvals = [
-  {
-    name: "Asha Singh",
-    goal: "Customer renewal uplift",
-    status: "Pending" as const,
-    weight: "40%",
-    submitted: "Sep 12",
-  },
-  {
-    name: "Daniel Cho",
-    goal: "Reduce support backlog",
-    status: "Revision" as const,
-    weight: "30%",
-    submitted: "Sep 10",
-  },
-  {
-    name: "Meera Rao",
-    goal: "Release quality score",
-    status: "Pending" as const,
-    weight: "50%",
-    submitted: "Sep 14",
-  },
-  {
-    name: "Rohan Patel",
-    goal: "API response time optimization",
-    status: "Pending" as const,
-    weight: "35%",
-    submitted: "Sep 15",
-  },
 ];
 
 const teamHealth = [
@@ -61,6 +31,9 @@ const feedback = [
 ];
 
 export function ManagerDashboard() {
+  const { data: approvals, isLoading, isError } = usePendingApprovals();
+  const respondMutation = useRespondToApproval();
+
   return (
     <AppShell
       title="Manager Dashboard"
@@ -72,9 +45,9 @@ export function ManagerDashboard() {
       <section id="summary" className="grid gap-4 md:grid-cols-3">
         <StatCard
           label="Pending approvals"
-          value="5"
-          helper="2 overdue"
-          trend="down"
+          value={approvals?.length.toString() || "0"}
+          helper="Action required"
+          trend={approvals && approvals.length > 0 ? "down" : "neutral"}
         />
         <StatCard
           label="Team progress"
@@ -92,22 +65,31 @@ export function ManagerDashboard() {
           <p className="text-sm text-ink-2">Review and approve team goals</p>
         </div>
         <Card hover={false}>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto min-h-[160px]">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-line text-left text-xs font-semibold uppercase tracking-[0.15em] text-ink-2">
                   <th className="pb-3 pr-4">Employee</th>
                   <th className="pb-3 pr-4">Goal</th>
-                  <th className="pb-3 pr-4">Weight</th>
                   <th className="pb-3 pr-4">Submitted</th>
                   <th className="pb-3 pr-4">Status</th>
                   <th className="pb-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {approvals.map((item, i) => (
+                {isLoading && (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-ink-2">Loading approvals...</td>
+                  </tr>
+                )}
+                {isError && (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-danger-500">Failed to load approvals queue.</td>
+                  </tr>
+                )}
+                {approvals?.map((item, i) => (
                   <motion.tr
-                    key={item.name}
+                    key={item.id}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.08 }}
@@ -116,25 +98,27 @@ export function ManagerDashboard() {
                     <td className="py-3.5 pr-4">
                       <div className="flex items-center gap-3">
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-50 text-xs font-bold text-accent">
-                          {item.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
+                          {item.requesterContext?.name
+                            ?.split(" ")
+                            .map((n: string) => n[0])
+                            .join("") || "E"}
                         </div>
                         <span className="font-semibold text-ink">
-                          {item.name}
+                          {item.requesterContext?.name || "Employee"}
                         </span>
                       </div>
                     </td>
-                    <td className="py-3.5 pr-4 text-ink-2">{item.goal}</td>
-                    <td className="py-3.5 pr-4 font-semibold text-ink">
-                      {item.weight}
+                    <td className="py-3.5 pr-4 text-ink-2">
+                      <div className="font-medium">{item.goalContext?.title}</div>
+                      <div className="text-xs text-ink-2 mt-0.5">{item.goalContext?.department}</div>
                     </td>
-                    <td className="py-3.5 pr-4 text-ink-2">{item.submitted}</td>
+                    <td className="py-3.5 pr-4 text-ink-2">
+                       {new Date(item.requestedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </td>
                     <td className="py-3.5 pr-4">
                       <Badge
                         variant={
-                          item.status === "Pending" ? "warning" : "info"
+                          item.status === "PENDING" ? "warning" : "info"
                         }
                       >
                         {item.status}
@@ -143,17 +127,21 @@ export function ManagerDashboard() {
                     <td className="py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <motion.button
+                          onClick={() => respondMutation.mutate({ id: item.id, payload: { status: "APPROVED" } })}
+                          disabled={respondMutation.isPending}
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-success-50 text-success-600 hover:bg-success-100 transition-colors"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-success-50 text-success-600 hover:bg-success-100 transition-colors disabled:opacity-50"
                           aria-label="Approve"
                         >
                           <Check className="h-4 w-4" />
                         </motion.button>
                         <motion.button
+                          onClick={() => respondMutation.mutate({ id: item.id, payload: { status: "REJECTED", comments: "Requires revision" } })}
+                          disabled={respondMutation.isPending}
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-danger-50 text-danger-500 hover:bg-danger-100 transition-colors"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-danger-50 text-danger-500 hover:bg-danger-100 transition-colors disabled:opacity-50"
                           aria-label="Reject"
                         >
                           <X className="h-4 w-4" />
@@ -161,7 +149,7 @@ export function ManagerDashboard() {
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-2 text-ink-2 hover:bg-primary-50 hover:text-accent transition-colors"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-2 text-ink-2 hover:bg-primary-50 hover:text-accent transition-colors disabled:opacity-50"
                           aria-label="Comment"
                         >
                           <MessageSquare className="h-4 w-4" />
@@ -170,6 +158,17 @@ export function ManagerDashboard() {
                     </td>
                   </motion.tr>
                 ))}
+                {approvals?.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <Check className="h-8 w-8 text-success-500 mb-2 opacity-50" />
+                        <span className="text-ink font-medium">All caught up!</span>
+                        <span className="text-ink-2 text-xs">No pending requests right now.</span>
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
