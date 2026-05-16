@@ -1,9 +1,11 @@
+import { useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Calendar, Flag, Hash, Target, X } from "lucide-react";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import type { Goal, GoalStatus } from "../types";
-import { useUpdateGoalStatus } from "../hooks";
+import { toast } from "sonner";
+import { useGoals, useUpdateGoalStatus } from "../hooks";
 
 const statusBadge: Record<
   GoalStatus,
@@ -30,6 +32,7 @@ export function GoalDetailDrawer({
   isOpen,
   onClose,
 }: GoalDetailDrawerProps) {
+  const { data: goals } = useGoals();
   const statusMutation = useUpdateGoalStatus();
 
   const statusInfo = goal ? statusBadge[goal.status] : null;
@@ -38,9 +41,35 @@ export function GoalDetailDrawer({
     : "";
   const dueDate = goal?.dueDate;
   const showSubmit = goal?.status === "DRAFT";
+  const uomLabel = goal
+    ? {
+        MIN_MAX: "Min/Max",
+        TIMELINE: "Timeline",
+        ZERO: "Zero-based",
+      }[goal.uom]
+    : "";
+
+  const activeGoals = useMemo(
+    () =>
+      goals?.filter(
+        (item) => item.status !== "REJECTED" && item.status !== "COMPLETED",
+      ) ?? [],
+    [goals],
+  );
+
+  const totalWeight = useMemo(
+    () => activeGoals.reduce((sum, item) => sum + (item.weight || 0), 0),
+    [activeGoals],
+  );
 
   const handleSubmitForApproval = () => {
     if (!goal) return;
+    if (Math.abs(totalWeight - 100) > 0.01) {
+      toast.error(
+        `Total goal weight must be 100%. Current total: ${totalWeight.toFixed(1)}%.`,
+      );
+      return;
+    }
     statusMutation.mutate(
       { id: goal.id, status: "SUBMITTED" },
       { onSuccess: onClose },
@@ -148,7 +177,7 @@ export function GoalDetailDrawer({
                     Target value
                   </div>
                   <div className="mt-2 text-sm font-semibold text-ink">
-                    {goal.targetValue} {goal.uom}
+                    {goal.targetValue} {uomLabel}
                   </div>
                 </div>
                 <div className="rounded-xl border border-line bg-white p-4 sm:col-span-3">

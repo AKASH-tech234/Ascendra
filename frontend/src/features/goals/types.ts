@@ -8,6 +8,8 @@ export const GoalStatusEnum = z.enum([
   "COMPLETED",
 ]);
 
+export const GoalUomEnum = z.enum(["MIN_MAX", "TIMELINE", "ZERO"]);
+
 export const goalSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().optional(),
@@ -15,7 +17,7 @@ export const goalSchema = z.object({
   startDate: z.string().min(1, "Start date is required"),
   dueDate: z.string().min(1, "Due date is required"),
   targetValue: z.number().min(1, "Target value is required"),
-  uom: z.string().min(1, "Unit of measure is required"),
+  uom: GoalUomEnum,
   weight: z
     .number()
     .min(10, "Weight must be at least 10%")
@@ -23,6 +25,7 @@ export const goalSchema = z.object({
 });
 
 export type GoalStatus = z.infer<typeof GoalStatusEnum>;
+export type GoalUom = z.infer<typeof GoalUomEnum>;
 export type GoalInput = z.infer<typeof goalSchema>;
 
 export interface Goal {
@@ -36,7 +39,7 @@ export interface Goal {
   startDate: string;
   dueDate: string;
   targetValue: number;
-  uom: string;
+  uom: GoalUom;
   creatorId: string;
   createdAt: string;
   updatedAt: string;

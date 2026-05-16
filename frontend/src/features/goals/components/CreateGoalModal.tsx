@@ -22,10 +22,9 @@ const categories = [
 ];
 
 const uomOptions = [
-  { value: "percent", label: "Percent" },
-  { value: "number", label: "Number" },
-  { value: "currency", label: "Currency" },
-  { value: "score", label: "Score" },
+  { value: "MIN_MAX", label: "Min/Max" },
+  { value: "TIMELINE", label: "Timeline" },
+  { value: "ZERO", label: "Zero-based" },
 ];
 
 export function CreateGoalModal({ isOpen, onClose }: CreateGoalModalProps) {
@@ -57,11 +56,12 @@ export function CreateGoalModal({ isOpen, onClose }: CreateGoalModalProps) {
     resolver: zodResolver(goalSchema),
     defaultValues: {
       weight: 10,
-      uom: "percent",
+      uom: "MIN_MAX",
     },
   });
 
   const weightValue = watch("weight") ?? 0;
+  const uomValue = watch("uom");
   const projectedTotal =
     totalWeight + (Number.isFinite(weightValue) ? weightValue : 0);
   const projectedRemaining = Math.max(0, 100 - projectedTotal);
@@ -205,7 +205,9 @@ export function CreateGoalModal({ isOpen, onClose }: CreateGoalModalProps) {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-ink">
-                    Target Value
+                    {uomValue === "ZERO"
+                      ? "Target Value (lower is better)"
+                      : "Target Value"}
                   </label>
                   <input
                     type="number"
@@ -218,6 +220,11 @@ export function CreateGoalModal({ isOpen, onClose }: CreateGoalModalProps) {
                   {errors.targetValue && (
                     <p className="text-xs text-danger-500">
                       {errors.targetValue.message}
+                    </p>
+                  )}
+                  {uomValue === "TIMELINE" && (
+                    <p className="text-xs text-ink-2">
+                      Progress will auto-calculate from the goal dates.
                     </p>
                   )}
                 </div>
