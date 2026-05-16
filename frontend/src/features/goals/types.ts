@@ -16,7 +16,10 @@ export const goalSchema = z.object({
   dueDate: z.string().min(1, "Due date is required"),
   targetValue: z.number().min(1, "Target value is required"),
   uom: z.string().min(1, "Unit of measure is required"),
-  weight: z.number().min(1).max(100),
+  weight: z
+    .number()
+    .min(10, "Weight must be at least 10%")
+    .max(100, "Weight cannot exceed 100%"),
 });
 
 export type GoalStatus = z.infer<typeof GoalStatusEnum>;

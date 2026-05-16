@@ -18,6 +18,7 @@ export function ReviewApprovalDrawer({
 }: ReviewApprovalDrawerProps) {
   const [comments, setComments] = useState("");
   const respondMutation = useRespondToApproval();
+  const isPending = approval?.status === "PENDING";
 
   const handleRespond = (status: "APPROVED" | "REJECTED") => {
     if (!approval) return;
@@ -28,7 +29,7 @@ export function ReviewApprovalDrawer({
           setComments("");
           onClose();
         },
-      }
+      },
     );
   };
 
@@ -63,6 +64,7 @@ export function ReviewApprovalDrawer({
               <button
                 onClick={onClose}
                 className="rounded-full p-2 text-ink-2 transition-colors hover:bg-surface-2"
+                aria-label="Close"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -95,9 +97,20 @@ export function ReviewApprovalDrawer({
                   onChange={(e) => setComments(e.target.value)}
                   placeholder="Add constructive feedback, required for rejections..."
                   rows={4}
-                  className="w-full rounded-xl border border-line bg-white px-4 py-3 text-sm transition-all focus:border-accent focus:ring-2 focus:ring-primary-500/30 outline-none resize-none"
+                  disabled={!isPending}
+                  className="w-full rounded-xl border border-line bg-white px-4 py-3 text-sm transition-all focus:border-accent focus:ring-2 focus:ring-primary-500/30 outline-none resize-none disabled:bg-surface-2"
                 />
               </div>
+
+              {!isPending ? (
+                <div className="rounded-xl border border-line bg-surface-2/70 px-4 py-3 text-sm text-ink-2">
+                  This request was {approval.status.toLowerCase()} on{" "}
+                  {approval.respondedAt
+                    ? new Date(approval.respondedAt).toLocaleDateString()
+                    : "a previous review"}
+                  .
+                </div>
+              ) : null}
             </div>
 
             <div className="flex items-center justify-between border-t border-line px-6 py-5 bg-surface mt-auto">
@@ -112,7 +125,9 @@ export function ReviewApprovalDrawer({
                 <button
                   type="button"
                   onClick={() => handleRespond("REJECTED")}
-                  disabled={respondMutation.isPending || !comments.trim()}
+                  disabled={
+                    !isPending || respondMutation.isPending || !comments.trim()
+                  }
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-danger-600 bg-danger-50 hover:bg-danger-100 transition-colors disabled:opacity-50"
                 >
                   <X className="h-4 w-4" />
@@ -121,7 +136,7 @@ export function ReviewApprovalDrawer({
                 <button
                   type="button"
                   onClick={() => handleRespond("APPROVED")}
-                  disabled={respondMutation.isPending}
+                  disabled={!isPending || respondMutation.isPending}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-success-500 hover:bg-success-600 shadow-lg shadow-success-500/20 transition-colors disabled:opacity-50"
                 >
                   <Check className="h-4 w-4" />

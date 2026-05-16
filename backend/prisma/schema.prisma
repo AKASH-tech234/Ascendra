@@ -10,32 +10,114 @@ datasource db {
   url      = "file:./dev.db"
 }
 
+enum UserRole {
+  EMPLOYEE
+  MANAGER
+  ADMIN
+}
+
+enum GoalStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum CheckInStatus {
+  NOT_STARTED
+  ON_TRACK
+  AT_RISK
+  COMPLETED
+}
+
+enum UomType {
+  MIN_MAX
+  TIMELINE
+  ZERO
+}
+
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  role      String   @default("EMPLOYEE")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  goals     Goal[]   @relation("UserGoals")
+  id                 String     @id @default(uuid())
+  name               String
+  email              String     @unique
+  passwordHash       String
+  role               UserRole   @default(EMPLOYEE)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  goals              Goal[]     @relation("UserGoals")
+  approvalsRequested Approval[] @relation("ApprovalRequester")
+  approvalsManaged   Approval[] @relation("ApprovalManager")
+  checkIns           CheckIn[]
+  auditLogs          AuditLog[]
 }
 
 model Goal {
-  id          String   @id @default(uuid())
+  id          String     @id @default(uuid())
   title       String
   description String?
   categoryId  String
-  status      String   @default("DRAFT")
-  progress    Int      @default(0)
-  weight      Int      @default(1)
+  status      GoalStatus @default(DRAFT)
+  progress    Float      @default(0)
+  weight      Float      @default(1)
   startDate   DateTime
   dueDate     DateTime
   targetValue Float
-  uom         String
-  
+  uom         UomType
+
   creatorId   String
-  creator     User     @relation("UserGoals", fields: [creatorId], references: [id])
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  creator     User       @relation("UserGoals", fields: [creatorId], references: [id])
+  approvals   Approval[]
+  checkIns    CheckIn[]
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Approval {
+  id          String         @id @default(uuid())
+  goalId      String
+  requesterId String
+  managerId   String
+  status      ApprovalStatus @default(PENDING)
+  requestedAt DateTime       @default(now())
+  respondedAt DateTime?
+  comments    String?
+
+  goal        Goal  @relation(fields: [goalId], references: [id])
+  requester   User  @relation("ApprovalRequester", fields: [requesterId], references: [id])
+  manager     User  @relation("ApprovalManager", fields: [managerId], references: [id])
+}
+
+model CheckIn {
+  id           String        @id @default(uuid())
+  goalId       String
+  userId       String
+  status       CheckInStatus @default(ON_TRACK)
+  currentValue Float?
+  progress     Float
+  comments     String
+  blockers     String?
+  createdAt    DateTime      @default(now())
+
+  goal         Goal @relation(fields: [goalId], references: [id])
+  user         User @relation(fields: [userId], references: [id])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String
+  entityType String
+  entityId   String?
+  actorId    String
+  metadata   String?
+  createdAt  DateTime @default(now())
+
+  actor      User @relation(fields: [actorId], references: [id])
 }

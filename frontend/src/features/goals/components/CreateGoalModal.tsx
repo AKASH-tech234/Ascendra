@@ -1,8 +1,10 @@
+import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCreateGoal } from "../hooks";
+import { toast } from "sonner";
+import { useCreateGoal, useGoals } from "../hooks";
 import { goalSchema } from "../types";
 import type { GoalInput } from "../types";
 
@@ -28,11 +30,28 @@ const uomOptions = [
 
 export function CreateGoalModal({ isOpen, onClose }: CreateGoalModalProps) {
   const mutation = useCreateGoal();
+  const { data: goals } = useGoals();
+
+  const activeGoals = useMemo(
+    () =>
+      goals?.filter(
+        (goal) => goal.status !== "REJECTED" && goal.status !== "COMPLETED",
+      ) ?? [],
+    [goals],
+  );
+
+  const totalWeight = useMemo(
+    () => activeGoals.reduce((sum, goal) => sum + (goal.weight || 0), 0),
+    [activeGoals],
+  );
+
+  const remainingWeight = Math.max(0, 100 - totalWeight);
 
   const {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<GoalInput>({
     resolver: zodResolver(goalSchema),
@@ -42,7 +61,27 @@ export function CreateGoalModal({ isOpen, onClose }: CreateGoalModalProps) {
     },
   });
 
+  const weightValue = watch("weight") ?? 0;
+  const projectedTotal =
+    totalWeight + (Number.isFinite(weightValue) ? weightValue : 0);
+  const projectedRemaining = Math.max(0, 100 - projectedTotal);
+  const projectedOverLimit = projectedTotal > 100.01;
+  const maxGoalsReached = activeGoals.length >= 8;
+
   const onSubmit = (values: GoalInput) => {
+    if (maxGoalsReached) {
+      toast.error("You can only have up to 8 active goals per cycle.");
+      return;
+    }
+
+    const proposedTotal = totalWeight + values.weight;
+    if (proposedTotal > 100.01) {
+      toast.error(
+        `Total goal weight cannot exceed 100%. You have ${remainingWeight.toFixed(1)}% remaining.`,
+      );
+      return;
+    }
+
     mutation.mutate(values, {
       onSuccess: () => {
         reset();
@@ -214,7 +253,7 @@ export function CreateGoalModal({ isOpen, onClose }: CreateGoalModalProps) {
                   </label>
                   <input
                     type="number"
-                    min="1"
+                    min="10"
                     max="100"
                     className={`w-full rounded-xl border bg-white px-4 py-3 text-sm transition-all focus:border-accent focus:ring-2 focus:ring-primary-500/30 outline-none ${
                       errors.weight ? "border-danger-500" : "border-line"
@@ -227,6 +266,39 @@ export function CreateGoalModal({ isOpen, onClose }: CreateGoalModalProps) {
                     </p>
                   )}
                 </div>
+              </div>
+
+              <div
+                className={`rounded-xl border px-4 py-3 text-xs ${
+                  projectedOverLimit
+                    ? "border-danger-200 bg-danger-50 text-danger-700"
+                    : "border-line bg-surface-2/60 text-ink-2"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span>Current total weight</span>
+                  <span className="font-semibold text-ink">
+                    {totalWeight.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between">
+                  <span>After this goal</span>
+                  <span
+                    className={`font-semibold ${
+                      projectedOverLimit ? "text-danger-600" : "text-ink"
+                    }`}
+                  >
+                    {projectedTotal.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="mt-1">
+                  Remaining: {projectedRemaining.toFixed(1)}% (target 100%)
+                </div>
+                {maxGoalsReached && (
+                  <div className="mt-2 font-semibold text-danger-600">
+                    Max 8 active goals per cycle reached.
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -251,7 +323,12 @@ export function CreateGoalModal({ isOpen, onClose }: CreateGoalModalProps) {
                 </button>
                 <button
                   type="submit"
-                  disabled={mutation.isPending || isSubmitting}
+                  disabled={
+                    mutation.isPending ||
+                    isSubmitting ||
+                    maxGoalsReached ||
+                    projectedOverLimit
+                  }
                   className="px-6 py-2 rounded-xl bg-accent text-sm font-semibold text-white shadow-lg shadow-primary-500/20 hover:bg-accent-3 transition-colors disabled:opacity-70"
                 >
                   {mutation.isPending ? "Creating..." : "Create Goal"}

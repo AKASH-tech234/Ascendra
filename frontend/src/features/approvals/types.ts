@@ -28,3 +28,10 @@ export interface ApprovalPayload {
   status: ApprovalStatus;
   comments?: string;
 }
+
+export interface ApprovalFilters {
+  status?: ApprovalStatus;
+  categoryId?: string;
+  requester?: string;
+  search?: string;
+}
