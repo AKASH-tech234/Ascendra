@@ -16,7 +16,7 @@ export interface ApprovalRequest {
   // Included minimal representation for rendering tables
   goalContext?: {
     title: string;
-    department: string;
+    categoryId: string;
   };
   requesterContext?: {
     name: string;

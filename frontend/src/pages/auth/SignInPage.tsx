@@ -11,6 +11,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { authApi } from "../../features/auth/api";
 import { useAuthStore } from "../../features/auth/store";
+import type { Role } from "../../features/auth/store";
 import type { LoginPayload } from "../../features/auth/api";
 
 const signInSchema = z.object({
@@ -22,10 +23,12 @@ export function SignInPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const setCredentials = useAuthStore((state) => state.setCredentials);
-  
-  // Try to redirect back exactly where the user came from (protected route drop-off), 
-  // otherwise default to the /app/employee landing
-  const from = location.state?.from?.pathname || "/app/employee";
+
+  const getRolePath = (role: Role) => {
+    if (role === "ADMIN") return "/app/admin";
+    if (role === "MANAGER") return "/app/manager";
+    return "/app/employee";
+  };
 
   const {
     register,
@@ -40,12 +43,16 @@ export function SignInPage() {
     onSuccess: (data) => {
       setCredentials(data.user, data.token);
       toast.success("Welcome back!");
+      const fallback = getRolePath(data.user.role);
+      const from = location.state?.from?.pathname || fallback;
       navigate(from, { replace: true });
     },
     onError: (error: any) => {
-      // In a real app we parse the error from the backend. 
+      // In a real app we parse the error from the backend.
       // e.g. error.response?.data?.message || ...
-      toast.error(error?.response?.data?.message || "Invalid email or password");
+      toast.error(
+        error?.response?.data?.message || "Invalid email or password",
+      );
     },
   });
 
@@ -111,7 +118,9 @@ export function SignInPage() {
                 />
               </div>
               {errors.email && (
-                <p className="text-xs text-danger-500">{errors.email.message}</p>
+                <p className="text-xs text-danger-500">
+                  {errors.email.message}
+                </p>
               )}
             </div>
 
@@ -136,13 +145,18 @@ export function SignInPage() {
                 />
               </div>
               {errors.password && (
-                <p className="text-xs text-danger-500">{errors.password.message}</p>
+                <p className="text-xs text-danger-500">
+                  {errors.password.message}
+                </p>
               )}
             </div>
 
             <div className="flex items-center justify-between text-sm text-ink-2">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="h-4 w-4 rounded border-line text-accent focus:ring-accent" />
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-line text-accent focus:ring-accent"
+                />
                 <span>Remember me</span>
               </label>
             </div>
@@ -152,7 +166,10 @@ export function SignInPage() {
               disabled={mutation.isPending}
               whileHover={!mutation.isPending ? { scale: 1.01 } : {}}
               whileTap={!mutation.isPending ? { scale: 0.98 } : {}}
-              className={buttonStyles({ size: "lg", className: "w-full disabled:opacity-70" })}
+              className={buttonStyles({
+                size: "lg",
+                className: "w-full disabled:opacity-70",
+              })}
             >
               {mutation.isPending ? (
                 <div className="flex items-center gap-2">
@@ -170,7 +187,10 @@ export function SignInPage() {
 
           <p className="text-sm text-ink-2 text-center mt-6">
             New to Ascendra?{" "}
-            <Link to="/auth/sign-up" className="font-semibold text-accent hover:text-accent-3 transition-colors">
+            <Link
+              to="/auth/sign-up"
+              className="font-semibold text-accent hover:text-accent-3 transition-colors"
+            >
               Create an account
             </Link>
           </p>

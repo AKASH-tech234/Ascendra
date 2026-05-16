@@ -4,8 +4,10 @@ import { AppShell } from "../../components/layout/AppShell";
 import { Card } from "../../components/ui/card";
 import { StatCard } from "../../components/ui/stat-card";
 import { Badge } from "../../components/ui/badge";
+import { Skeleton } from "../../components/ui/skeleton";
 import { TeamProgressLineChart } from "../../components/ui/charts";
 import { usePendingApprovals, useRespondToApproval } from "../../features/approvals/hooks";
+import { Link } from "react-router-dom";
 
 const nav = [
   { label: "Summary", href: "#summary" },
@@ -60,9 +62,12 @@ export function ManagerDashboard() {
 
       {/* Approvals */}
       <section id="approvals" className="space-y-4">
-        <div>
-          <h3 className="text-lg font-bold text-ink">Approvals Queue</h3>
-          <p className="text-sm text-ink-2">Review and approve team goals</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-ink">Approvals Queue</h3>
+            <p className="text-sm text-ink-2">Review and approve team goals</p>
+          </div>
+          <Link to="/app/approvals" className="text-sm font-semibold text-accent hover:text-accent-3">View all &rarr;</Link>
         </div>
         <Card hover={false}>
           <div className="overflow-x-auto min-h-[160px]">
@@ -78,9 +83,22 @@ export function ManagerDashboard() {
               </thead>
               <tbody>
                 {isLoading && (
-                  <tr>
-                    <td colSpan={5} className="py-8 text-center text-ink-2">Loading approvals...</td>
-                  </tr>
+                  <>
+                    {[1, 2, 3].map((i) => (
+                      <tr key={i} className="border-b border-line/50">
+                        <td className="py-3.5 pr-4">
+                          <div className="flex items-center gap-3">
+                            <Skeleton className="h-8 w-8 rounded-full" />
+                            <Skeleton className="h-4 w-24" />
+                          </div>
+                        </td>
+                        <td className="py-3.5 pr-4"><div className="space-y-1.5"><Skeleton className="h-4 w-40" /><Skeleton className="h-3 w-24" /></div></td>
+                        <td className="py-3.5 pr-4"><Skeleton className="h-4 w-20" /></td>
+                        <td className="py-3.5 pr-4"><Skeleton className="h-5 w-16 rounded-full" /></td>
+                        <td className="py-3.5 text-right"><div className="flex justify-end gap-1.5"><Skeleton className="h-8 w-8 rounded-lg" /><Skeleton className="h-8 w-8 rounded-lg" /><Skeleton className="h-8 w-8 rounded-lg" /></div></td>
+                      </tr>
+                    ))}
+                  </>
                 )}
                 {isError && (
                   <tr>
@@ -110,7 +128,7 @@ export function ManagerDashboard() {
                     </td>
                     <td className="py-3.5 pr-4 text-ink-2">
                       <div className="font-medium">{item.goalContext?.title}</div>
-                      <div className="text-xs text-ink-2 mt-0.5">{item.goalContext?.department}</div>
+                      <div className="text-xs text-ink-2 mt-0.5">{item.goalContext?.categoryId}</div>
                     </td>
                     <td className="py-3.5 pr-4 text-ink-2">
                        {new Date(item.requestedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}

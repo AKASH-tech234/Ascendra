@@ -11,6 +11,21 @@ export interface CreateGoalModalProps {
   onClose: () => void;
 }
 
+const categories = [
+  { id: "growth", label: "Growth" },
+  { id: "engineering", label: "Engineering" },
+  { id: "sales", label: "Sales" },
+  { id: "design", label: "Design" },
+  { id: "customer", label: "Customer Success" },
+];
+
+const uomOptions = [
+  { value: "percent", label: "Percent" },
+  { value: "number", label: "Number" },
+  { value: "currency", label: "Currency" },
+  { value: "score", label: "Score" },
+];
+
 export function CreateGoalModal({ isOpen, onClose }: CreateGoalModalProps) {
   const mutation = useCreateGoal();
 
@@ -23,6 +38,7 @@ export function CreateGoalModal({ isOpen, onClose }: CreateGoalModalProps) {
     resolver: zodResolver(goalSchema),
     defaultValues: {
       weight: 10,
+      uom: "percent",
     },
   });
 
@@ -68,7 +84,9 @@ export function CreateGoalModal({ isOpen, onClose }: CreateGoalModalProps) {
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-ink">Goal Title</label>
+                <label className="text-sm font-semibold text-ink">
+                  Goal Title
+                </label>
                 <input
                   type="text"
                   placeholder="Increase Q3 pipeline conversion"
@@ -77,60 +95,144 @@ export function CreateGoalModal({ isOpen, onClose }: CreateGoalModalProps) {
                   }`}
                   {...register("title")}
                 />
-                {errors.title && <p className="text-xs text-danger-500">{errors.title.message}</p>}
+                {errors.title && (
+                  <p className="text-xs text-danger-500">
+                    {errors.title.message}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-ink">Department</label>
+                  <label className="text-sm font-semibold text-ink">
+                    Category
+                  </label>
                   <select
                     className={`w-full rounded-xl border bg-white px-4 py-3 text-sm transition-all focus:border-accent focus:ring-2 focus:ring-primary-500/30 outline-none ${
-                      errors.department ? "border-danger-500" : "border-line"
+                      errors.categoryId ? "border-danger-500" : "border-line"
                     }`}
-                    {...register("department")}
+                    {...register("categoryId")}
                   >
                     <option value="">Select...</option>
-                    <option value="Growth">Growth</option>
-                    <option value="Engineering">Engineering</option>
-                    <option value="Sales">Sales</option>
-                    <option value="Design">Design</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.label}
+                      </option>
+                    ))}
                   </select>
-                  {errors.department && (
-                    <p className="text-xs text-danger-500">{errors.department.message}</p>
+                  {errors.categoryId && (
+                    <p className="text-xs text-danger-500">
+                      {errors.categoryId.message}
+                    </p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-ink">Target Date</label>
+                  <label className="text-sm font-semibold text-ink">
+                    Start Date
+                  </label>
                   <input
                     type="date"
                     className={`w-full rounded-xl border bg-white px-4 py-3 text-sm transition-all focus:border-accent focus:ring-2 focus:ring-primary-500/30 outline-none ${
-                      errors.targetDate ? "border-danger-500" : "border-line"
+                      errors.startDate ? "border-danger-500" : "border-line"
                     }`}
-                    {...register("targetDate")}
+                    {...register("startDate")}
                   />
-                  {errors.targetDate && (
-                    <p className="text-xs text-danger-500">{errors.targetDate.message}</p>
+                  {errors.startDate && (
+                    <p className="text-xs text-danger-500">
+                      {errors.startDate.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-ink">
+                    Due Date
+                  </label>
+                  <input
+                    type="date"
+                    className={`w-full rounded-xl border bg-white px-4 py-3 text-sm transition-all focus:border-accent focus:ring-2 focus:ring-primary-500/30 outline-none ${
+                      errors.dueDate ? "border-danger-500" : "border-line"
+                    }`}
+                    {...register("dueDate")}
+                  />
+                  {errors.dueDate && (
+                    <p className="text-xs text-danger-500">
+                      {errors.dueDate.message}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-ink">
+                    Target Value
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    className={`w-full rounded-xl border bg-white px-4 py-3 text-sm transition-all focus:border-accent focus:ring-2 focus:ring-primary-500/30 outline-none ${
+                      errors.targetValue ? "border-danger-500" : "border-line"
+                    }`}
+                    {...register("targetValue", { valueAsNumber: true })}
+                  />
+                  {errors.targetValue && (
+                    <p className="text-xs text-danger-500">
+                      {errors.targetValue.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-ink">
+                    Unit of Measure
+                  </label>
+                  <select
+                    className={`w-full rounded-xl border bg-white px-4 py-3 text-sm transition-all focus:border-accent focus:ring-2 focus:ring-primary-500/30 outline-none ${
+                      errors.uom ? "border-danger-500" : "border-line"
+                    }`}
+                    {...register("uom")}
+                  >
+                    {uomOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.uom && (
+                    <p className="text-xs text-danger-500">
+                      {errors.uom.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-ink">
+                    Goal Weight (%)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    className={`w-full rounded-xl border bg-white px-4 py-3 text-sm transition-all focus:border-accent focus:ring-2 focus:ring-primary-500/30 outline-none ${
+                      errors.weight ? "border-danger-500" : "border-line"
+                    }`}
+                    {...register("weight", { valueAsNumber: true })}
+                  />
+                  {errors.weight && (
+                    <p className="text-xs text-danger-500">
+                      {errors.weight.message}
+                    </p>
                   )}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-ink">Goal Weight (%)</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="100"
-                  className={`w-full rounded-xl border bg-white px-4 py-3 text-sm transition-all focus:border-accent focus:ring-2 focus:ring-primary-500/30 outline-none ${
-                    errors.weight ? "border-danger-500" : "border-line"
-                  }`}
-                  {...register("weight", { valueAsNumber: true })}
-                />
-                {errors.weight && <p className="text-xs text-danger-500">{errors.weight.message}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-ink">Description (Optional)</label>
+                <label className="text-sm font-semibold text-ink">
+                  Description (Optional)
+                </label>
                 <textarea
                   placeholder="Add qualitative targets or context..."
                   rows={3}

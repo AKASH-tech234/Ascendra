@@ -84,12 +84,18 @@ export function AppShell({
           {/* Navigation */}
           <nav className="flex-1 px-3 py-4 space-y-1">
             {nav.map((item) => {
-              const Icon = item.icon || roleNavIcons[item.label] || LayoutDashboard;
+              const Icon =
+                item.icon || roleNavIcons[item.label] || LayoutDashboard;
               const isActive = item.label === active;
+              const isRoute = item.href.startsWith("/");
+              const NavComponent = isRoute ? Link : "a";
+              const navProps = isRoute
+                ? { to: item.href }
+                : { href: item.href };
               return (
-                <a
+                <NavComponent
                   key={item.label}
-                  href={item.href}
+                  {...navProps}
                   className={cn(
                     "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 group",
                     isActive
@@ -100,7 +106,9 @@ export function AppShell({
                   <Icon
                     className={cn(
                       "h-5 w-5 shrink-0 transition-colors",
-                      isActive ? "text-accent" : "text-ink-2 group-hover:text-ink",
+                      isActive
+                        ? "text-accent"
+                        : "text-ink-2 group-hover:text-ink",
                     )}
                   />
                   {!collapsed && (
@@ -112,7 +120,7 @@ export function AppShell({
                       {item.label}
                     </motion.span>
                   )}
-                </a>
+                </NavComponent>
               );
             })}
           </nav>
@@ -165,7 +173,10 @@ export function AppShell({
               <div className="rounded-full bg-surface-2 px-3 py-1.5 text-xs font-semibold text-ink-2">
                 Q3 2026
               </div>
-              <button className="relative p-2 rounded-full hover:bg-surface-2 transition-colors" aria-label="Notifications">
+              <button
+                className="relative p-2 rounded-full hover:bg-surface-2 transition-colors"
+                aria-label="Notifications"
+              >
                 <Bell className="h-5 w-5 text-ink-2" />
                 <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-danger-500 ring-2 ring-white" />
               </button>

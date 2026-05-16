@@ -4,7 +4,7 @@ import { Plus, FileText, Users } from "lucide-react";
 import { AppShell } from "../../components/layout/AppShell";
 import { Card } from "../../components/ui/card";
 import { StatCard } from "../../components/ui/stat-card";
-import { GoalCard } from "../../components/ui/goal-card";
+import { GoalCard, GoalCardSkeleton } from "../../components/ui/goal-card";
 import { GoalProgressChart } from "../../components/ui/charts";
 import { Badge } from "../../components/ui/badge";
 import { useGoals } from "../../features/goals/hooks";
@@ -45,8 +45,10 @@ export function EmployeeDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false);
 
-  const onTrackCount = goals?.filter(g => g.status === "APPROVED" || g.status === "SUBMITTED").length || 0;
-  
+  const onTrackCount =
+    goals?.filter((g) => g.status === "APPROVED" || g.status === "SUBMITTED")
+      .length || 0;
+
   return (
     <AppShell
       title="Employee Dashboard"
@@ -56,7 +58,12 @@ export function EmployeeDashboard() {
     >
       {/* Stats */}
       <section id="summary" className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Active goals" value={goals?.length.toString() || "0"} helper={`${onTrackCount} pending/approved`} trend="up" />
+        <StatCard
+          label="Active goals"
+          value={goals?.length.toString() || "0"}
+          helper={`${onTrackCount} pending/approved`}
+          trend="up"
+        />
         <StatCard
           label="Avg progress"
           value="78%"
@@ -85,31 +92,46 @@ export function EmployeeDashboard() {
         </div>
         <div className="grid gap-3">
           {isLoading && (
-            <div className="py-8 text-center text-sm text-ink-2">Loading goals...</div>
+            <>
+              <GoalCardSkeleton />
+              <GoalCardSkeleton />
+            </>
           )}
           {isError && (
-             <div className="py-8 text-center text-sm text-danger-500">Failed to load goals</div>
+            <div className="py-8 text-center text-sm text-danger-500">
+              Failed to load goals
+            </div>
           )}
           {goals?.map((goal, i) => (
             <GoalCard
               key={goal.id}
               title={goal.title}
-              status={goal.status === "APPROVED" ? "On Track" : goal.status === "DRAFT" ? "Draft" : "At Risk"} 
+              status={
+                goal.status === "APPROVED"
+                  ? "On Track"
+                  : goal.status === "DRAFT"
+                    ? "Draft"
+                    : "At Risk"
+              }
               progress={goal.progress}
-              dueDate={goal.targetDate}
+              dueDate={goal.dueDate}
               weight={`${goal.weight}%`}
-              thrustArea={goal.department}
+              category={goal.categoryId}
               index={i}
             />
           ))}
           {goals?.length === 0 && (
-             <div className="rounded-xl border border-dashed border-line p-8 flex flex-col items-center justify-center text-center">
-               <div className="h-10 w-10 bg-surface-2 rounded-full flex items-center justify-center mb-3 text-ink-2">
-                 <Plus className="h-5 w-5" />
-               </div>
-               <p className="text-sm font-medium text-ink">No goals created yet</p>
-               <p className="text-xs text-ink-2 mt-1">Start by creating your first quarterly objective.</p>
-             </div>
+            <div className="rounded-xl border border-dashed border-line p-8 flex flex-col items-center justify-center text-center">
+              <div className="h-10 w-10 bg-surface-2 rounded-full flex items-center justify-center mb-3 text-ink-2">
+                <Plus className="h-5 w-5" />
+              </div>
+              <p className="text-sm font-medium text-ink">
+                No goals created yet
+              </p>
+              <p className="text-xs text-ink-2 mt-1">
+                Start by creating your first quarterly objective.
+              </p>
+            </div>
           )}
         </div>
       </section>
@@ -128,9 +150,23 @@ export function EmployeeDashboard() {
           </div>
           <div className="space-y-3">
             {[
-              { icon: Plus, label: "Draft new goal", color: "bg-primary-50 text-accent", onClick: () => setIsModalOpen(true) },
-              { icon: FileText, label: "Submit quarterly check-in", color: "bg-success-50 text-success-700" },
-              { icon: Users, label: "Review shared goals", color: "bg-warning-50 text-warning-600" },
+              {
+                icon: Plus,
+                label: "Draft new goal",
+                color: "bg-primary-50 text-accent",
+                onClick: () => setIsModalOpen(true),
+              },
+              {
+                icon: FileText,
+                label: "Submit quarterly check-in",
+                color: "bg-success-50 text-success-700",
+                onClick: () => setIsCheckInModalOpen(true),
+              },
+              {
+                icon: Users,
+                label: "Review shared goals",
+                color: "bg-warning-50 text-warning-600",
+              },
             ].map((action) => (
               <motion.button
                 key={action.label}
@@ -138,7 +174,9 @@ export function EmployeeDashboard() {
                 whileHover={{ x: 4 }}
                 className="w-full flex items-center gap-3 rounded-xl border border-line p-3.5 text-sm font-medium text-ink hover:bg-surface-2 transition-all text-left"
               >
-                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${action.color}`}>
+                <div
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg ${action.color}`}
+                >
                   <action.icon className="h-4 w-4" />
                 </div>
                 {action.label}
@@ -149,10 +187,16 @@ export function EmployeeDashboard() {
       </section>
 
       {/* Create Goal Modal */}
-      <CreateGoalModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <CreateGoalModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
 
       {/* Check In Modal */}
-      <CheckInModal isOpen={isCheckInModalOpen} onClose={() => setIsCheckInModalOpen(false)} />
+      <CheckInModal
+        isOpen={isCheckInModalOpen}
+        onClose={() => setIsCheckInModalOpen(false)}
+      />
 
       {/* Check-ins + Activity */}
       <section id="checkins" className="grid gap-6 lg:grid-cols-2">
