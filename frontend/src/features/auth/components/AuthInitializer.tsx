@@ -5,12 +5,15 @@ import { authApi } from "../api";
 import { api } from "../../../services/axios";
 
 export function AuthInitializer({ children }: { children: ReactNode }) {
-  const { token, setUser, logout } = useAuthStore();
+  const token = useAuthStore((state) => state.token);
+  const setUser = useAuthStore((state) => state.setUser);
+  const logout = useAuthStore((state) => state.logout);
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
     async function initAuth() {
       if (!token) {
+        delete api.defaults.headers.common["Authorization"];
         setIsInitializing(false);
         return;
       }
@@ -24,6 +27,7 @@ export function AuthInitializer({ children }: { children: ReactNode }) {
         setUser(user);
       } catch (error) {
         // Token might be invalid/expired, and our interceptor might have failed to refresh it
+        delete api.defaults.headers.common["Authorization"];
         logout();
       } finally {
         setIsInitializing(false);

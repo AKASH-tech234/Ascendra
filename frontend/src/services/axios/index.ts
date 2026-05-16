@@ -1,6 +1,17 @@
 import axios from "axios";
 import type { InternalAxiosRequestConfig, AxiosError } from "axios";
-import { useAuthStore } from "../../features/auth/store"; // We'll build this next
+import { useAuthStore } from "../../features/auth/store";
+
+type RetriableRequestConfig = InternalAxiosRequestConfig & { _retry?: boolean };
+
+const NON_REFRESHABLE_AUTH_PATHS = [
+  "/auth/login",
+  "/auth/register",
+  "/auth/refresh",
+];
+
+const isNonRefreshableAuthPath = (url?: string) =>
+  NON_REFRESHABLE_AUTH_PATHS.some((path) => (url || "").includes(path));
 
 export const api = axios.create({
   baseURL: "/api",
@@ -8,47 +19,95 @@ export const api = axios.create({
     "Content-Type": "application/json",
   },
 });
+const refreshClient = axios.create({
+  baseURL: "/api",
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
+let refreshTokenPromise: Promise<string> | null = null;
+
+async function refreshAccessToken(): Promise<string> {
+  const token = useAuthStore.getState().token;
+  if (!token) {
+    throw new Error("No active token to refresh");
+  }
+
+  const { data } = await refreshClient.post<{ token: string }>(
+    "/auth/refresh",
+    {},
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  const newToken = data.token;
+  useAuthStore.getState().setToken(newToken);
+  api.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
+  return newToken;
+}
 // Request Interceptor
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Inject token if available
     const token = useAuthStore.getState().token;
-    if (token && config.headers) {
+    if (!config.headers) {
+      return config;
+    }
+
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      delete config.headers.Authorization;
     }
     return config;
   },
   (error: AxiosError) => {
     return Promise.reject(error);
-  }
+  },
 );
 
-// Response Interceptor
 api.interceptors.response.use(
   (response) => {
     return response;
   },
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as RetriableRequestConfig | undefined;
+    const status = error.response?.status;
+    const shouldAttemptRefresh =
+      status === 401 &&
+      !!originalRequest &&
+      !originalRequest._retry &&
+      !isNonRefreshableAuthPath(originalRequest.url);
 
-    // Handle 401 Unauthorized globally
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+    if (shouldAttemptRefresh && originalRequest) {
       originalRequest._retry = true;
       try {
-        // Here we could implement the Refresh Token logic. For now, assuming fake/stub logic:
-        // const newTokens = await axios.post('/api/auth/refresh');
-        // useAuthStore.getState().setToken(newTokens.data.accessToken);
+        if (!refreshTokenPromise) {
+          refreshTokenPromise = refreshAccessToken().finally(() => {
+            refreshTokenPromise = null;
+          });
+        }
 
-        // If refresh fails, log out the user
-        // useAuthStore.getState().logout();
-      } catch (e) {
+        const newToken = await refreshTokenPromise;
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        }
+
+        return api(originalRequest);
+      } catch (refreshError) {
+        delete api.defaults.headers.common["Authorization"];
         useAuthStore.getState().logout();
-        return Promise.reject(e);
+        return Promise.reject(refreshError);
       }
     }
 
-    // You could handle other global errors (403, 500) here, or let the local mutations handle them.
+    if (status === 401 && !isNonRefreshableAuthPath(originalRequest?.url)) {
+      delete api.defaults.headers.common["Authorization"];
+      useAuthStore.getState().logout();
+    }
     return Promise.reject(error);
   }
 );

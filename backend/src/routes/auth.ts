@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Response } from "express";
 import bcrypt from "bcryptjs";
 import { prisma } from "../db";
 import { signToken } from "../utils/tokens";
@@ -20,6 +20,9 @@ function toSafeUser(user: {
     role: user.role,
   };
 }
+function sendAuthError(res: Response, status: number, message: string) {
+  return res.status(status).json({ error: message, message });
+}
 
 router.post("/register", async (req, res) => {
   try {
@@ -31,12 +34,12 @@ router.post("/register", async (req, res) => {
     };
 
     if (!name || !email) {
-      return res.status(400).json({ error: "Name and email are required" });
+      return sendAuthError(res, 400, "Name and email are required");
     }
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
-      return res.status(409).json({ error: "Email already registered" });
+      return sendAuthError(res, 409, "Email already registered");
     }
 
     const normalizedRole = ["EMPLOYEE", "MANAGER", "ADMIN"].includes(role || "")
@@ -65,7 +68,7 @@ router.post("/register", async (req, res) => {
     return res.status(201).json({ user: toSafeUser(user), token });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ error: "Failed to register" });
+    return sendAuthError(res, 500, "Failed to register");
   }
 });
 
@@ -77,17 +80,17 @@ router.post("/login", async (req, res) => {
     };
 
     if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required" });
+      return sendAuthError(res, 400, "Email and password are required");
     }
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      return sendAuthError(res, 401, "Invalid credentials");
     }
 
     const matches = await bcrypt.compare(password, user.passwordHash);
     if (!matches) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      return sendAuthError(res, 401, "Invalid credentials");
     }
 
     const token = signToken({ userId: user.id, role: user.role });
@@ -102,31 +105,31 @@ router.post("/login", async (req, res) => {
     return res.status(200).json({ user: toSafeUser(user), token });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ error: "Failed to login" });
+    return sendAuthError(res, 500, "Failed to login");
   }
 });
 
 router.get("/me", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return sendAuthError(res, 401, "Unauthorized");
     }
 
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return sendAuthError(res, 404, "User not found");
     }
 
     return res.json(toSafeUser(user));
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ error: "Failed to load user" });
+    return sendAuthError(res, 500, "Failed to load user");
   }
 });
 
 router.post("/refresh", requireAuth, async (req: AuthenticatedRequest, res) => {
   if (!req.user) {
-    return res.status(401).json({ error: "Unauthorized" });
+    return sendAuthError(res, 401, "Unauthorized");
   }
 
   const token = signToken({

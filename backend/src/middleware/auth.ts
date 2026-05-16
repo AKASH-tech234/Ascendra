@@ -10,6 +10,9 @@ export type AuthUser = {
 export interface AuthenticatedRequest extends Request {
   user?: AuthUser;
 }
+function sendAuthError(res: Response, message: string) {
+  return res.status(401).json({ error: message, message });
+}
 
 export function requireAuth(
   req: AuthenticatedRequest,
@@ -18,7 +21,7 @@ export function requireAuth(
 ) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Missing authorization token" });
+    return sendAuthError(res, "Missing authorization token");
   }
 
   const token = authHeader.slice(7);
@@ -27,7 +30,7 @@ export function requireAuth(
     req.user = { id: payload.userId, role: payload.role };
     return next();
   } catch (error) {
-    return res.status(401).json({ error: "Invalid or expired token" });
+    return sendAuthError(res, "Invalid or expired token");
   }
 }
 
